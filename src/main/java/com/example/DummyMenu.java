@@ -52,7 +52,7 @@ public class DummyMenu {
 
     // Right Shift menu: shob dummy-r list
     public static void openList(ServerPlayerEntity p) {
-        List<String> names = new ArrayList<>(DummyManager.allNames(p.getServer()));
+        List<String> names = new ArrayList<>(DummyManager.allNames(DummyManager.server(p)));
         SimpleInventory inv = new SimpleInventory(54);
         for (int i = 0; i < names.size() && i < 54; i++)
             inv.setStack(i, icon(Items.PLAYER_HEAD, "§a" + names.get(i)));
@@ -64,7 +64,7 @@ public class DummyMenu {
 
     // Dummy-r nijer menu (Shift + Right Click)
     public static void openDummy(ServerPlayerEntity p, String name) {
-        MinecraftServer server = p.getServer();
+        MinecraftServer server = DummyManager.server(p);
         DummyPlayer cur = DummyManager.getDummy(server, name);
         boolean rec = DummyManager.isRecording(name);
         boolean botOn = cur != null && cur.bot;
