@@ -39,6 +39,10 @@ public class DummyPlayer extends ServerPlayerEntity {
         super(server, world, profile, SyncedClientOptions.createDefault());
     }
 
+    private MinecraftServer srv() {
+        return ((ServerWorld) this.getEntityWorld()).getServer();
+    }
+
     public static void spawn(MinecraftServer server, ServerWorld world, Vec3d pos, float yaw,
                              String name, Consumer<DummyPlayer> after) {
         if (server.getPlayerManager().getPlayer(name) != null) {
@@ -100,7 +104,7 @@ public class DummyPlayer extends ServerPlayerEntity {
             DummyManager.later(2, this::removeDummy);
             return;
         }
-        if (this.getServer().getTicks() % 10 == 0) {
+        if (srv().getTicks() % 10 == 0) {
             this.networkHandler.syncWithPlayerPosition();
             ((ServerWorld) this.getEntityWorld()).getChunkManager().updatePosition(this);
         }
@@ -112,7 +116,7 @@ public class DummyPlayer extends ServerPlayerEntity {
     private void botTick() {
         ServerPlayerEntity target = null;
         double best = 30 * 30;
-        for (ServerPlayerEntity pl : getServer().getPlayerManager().getPlayerList()) {
+        for (ServerPlayerEntity pl : srv().getPlayerManager().getPlayerList()) {
             if (pl == this || pl instanceof DummyPlayer || pl.isSpectator() || pl.isCreative()) continue;
             double d = this.squaredDistanceTo(pl);
             if (d < best) { best = d; target = pl; }
