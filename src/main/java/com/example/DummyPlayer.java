@@ -47,20 +47,27 @@ public class DummyPlayer extends ServerPlayerEntity {
                              String name, Consumer<DummyPlayer> after) {
         if (server.getPlayerManager().getPlayer(name) != null) {
             if (after != null && server.getPlayerManager().getPlayer(name) instanceof DummyPlayer d) after.accept(d);
+            else server.getPlayerManager().broadcast(Text.literal("Ei nam-er player ageei ache: " + name), false);
             return;
         }
+        server.getPlayerManager().broadcast(Text.literal("Dummy spawn hocche: " + name), false);
         new Thread(() -> {
             GameProfile profile = fetchProfile(name);
             server.execute(() -> {
-                DummyPlayer p = new DummyPlayer(server, world, profile);
-                p.refreshPositionAndAngles(pos.x, pos.y, pos.z, yaw, 0);
-                server.getPlayerManager().onPlayerConnect(
-                    new FakeConnection(), p,
-                    new ConnectedClientData(profile, 0, p.getClientOptions(), false));
-                p.setHealth(p.getMaxHealth());
-                p.getHungerManager().setFoodLevel(20);
-                p.networkHandler.requestTeleport(pos.x, pos.y, pos.z, yaw, 0);
-                if (after != null) after.accept(p);
+                try {
+                    DummyPlayer p = new DummyPlayer(server, world, profile);
+                    p.refreshPositionAndAngles(pos.x, pos.y, pos.z, yaw, 0);
+                    server.getPlayerManager().onPlayerConnect(
+                        new FakeConnection(), p,
+                        new ConnectedClientData(profile, 0, p.getClientOptions(), false));
+                    p.setHealth(p.getMaxHealth());
+                    p.getHungerManager().setFoodLevel(20);
+                    p.networkHandler.requestTeleport(pos.x, pos.y, pos.z, yaw, 0);
+                    if (after != null) after.accept(p);
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                    server.getPlayerManager().broadcast(Text.literal("§cDummy error: " + t), false);
+                }
             });
         }).start();
     }
