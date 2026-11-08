@@ -9,6 +9,7 @@ import net.minecraft.item.BlockItem;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.s2c.play.EntitiesDestroyS2CPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -52,6 +53,8 @@ public class DummyManager {
     static MinecraftServer server(ServerPlayerEntity p) { return ((ServerWorld) p.getEntityWorld()).getServer(); }
     static void msg(ServerPlayerEntity p, String s) { if (p != null) p.sendMessage(Text.literal(s), false); }
     public static void later(int ticks, Runnable r) { later.add(new Later(ticks, r)); }
+
+    public static boolean isBeingRecordedBy(ServerPlayerEntity p) { return byPlayer(p) != null; }
 
     // ---------- files ----------
     static File dir() {
@@ -121,6 +124,13 @@ public class DummyManager {
         d.equipStack(EquipmentSlot.LEGS, new ItemStack(a[2]));
         d.equipStack(EquipmentSlot.FEET, new ItemStack(a[3]));
     }
+    public static void copyKit(ServerPlayerEntity p, String name) {
+        DummyPlayer d = getDummy(server(p), name);
+        if (d == null) { msg(p, "Dummy nai"); return; }
+        int n = Math.min(p.getInventory().size(), d.getInventory().size());
+        for (int i = 0; i < n; i++) d.getInventory().setStack(i, p.getInventory().getStack(i).copy());
+        msg(p, "§aKit dummy-te copy hoyeche");
+    }
 
     // ---------- recording ----------
     public static boolean isRecording(String name) { return recording.containsKey(key(name)); }
@@ -133,14 +143,9 @@ public class DummyManager {
         ensure(server, pos, player.getYaw(), name, d -> {
             RecState s = new RecState();
             s.player = player.getUuid();
-            EquipmentSlot[] sl = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
-            for (int i = 0; i < 4; i++) {
-                ItemStack st = player.getEquippedStack(sl[i]);
-                s.rec.armor[i] = Registries.ITEM.getId(st.getItem()).toString();
-                d.equipStack(sl[i], st.copy());
-            }
             playing.remove(k);
             d.setBot(false);
+            d.mirroring = true;
             d.setInvulnerable(true);
             player.addStatusEffect(new StatusEffectInstance(StatusEffects.INVISIBILITY,
                 StatusEffectInstance.INFINITE, 0, false, false, false));
@@ -156,10 +161,14 @@ public class DummyManager {
         ServerPlayerEntity p = server.getPlayerManager().getPlayer(s.player);
         if (p != null) {
             p.removeStatusEffect(StatusEffects.INVISIBILITY);
-            msg(p, "§aRecording save hoyeche: " + name + " (" + s.rec.frames.size() / 20 + " second)");
+            msg(p, "§aRecording save hoyeche: " + name + " (" + s.rec.frames.size() / 20 + " second). Dekhte: preview start");
         }
         DummyPlayer d = getDummy(server, name);
-        if (d != null) d.setInvulnerable(false);
+        if (d != null) {
+            d.mirroring = false;
+            d.setInvulnerable(false);
+            later(1, d::removeDummy);
+        }
         if (!s.rec.frames.isEmpty()) save(name, s.rec);
         return true;
     }
@@ -197,10 +206,8 @@ public class DummyManager {
             Frame f0 = rec.frames.get(0);
             ensure(server, new Vec3d(f0.x, f0.y, f0.z), f0.yaw, name, d -> {
                 d.setBot(false);
+                d.mirroring = false;
                 d.setInvulnerable(false);
-                EquipmentSlot[] sl = {EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET};
-                for (int i = 0; i < 4; i++)
-                    d.equipStack(sl[i], new ItemStack(Registries.ITEM.get(Identifier.of(rec.armor[i]))));
                 playing.put(k, new PlayState(rec));
                 msg(caller, "§aPreview shuru: " + name);
             });
@@ -301,6 +308,8 @@ public class DummyManager {
             if (!s.ev.isEmpty()) { f.ev = new ArrayList<>(s.ev); s.ev.clear(); }
             s.rec.frames.add(f);
             apply(d, f);
+            // dummy-ke recording-er player-er client theke lukiye rakhi (first person-e shudhu nijeke dekhbi)
+            p.networkHandler.sendPacket(new EntitiesDestroyS2CPacket(d.getId()));
         }
 
         for (String k : new ArrayList<>(playing.keySet())) {
@@ -319,4 +328,4 @@ public class DummyManager {
             if (pv.fpp && p.getCameraEntity() == p) exitPreview(p);
         }
     }
-                }
+}
