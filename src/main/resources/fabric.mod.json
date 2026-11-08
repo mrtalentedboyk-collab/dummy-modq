@@ -1,4 +1,20 @@
-"entrypoints": {
-  "main": ["com.example.ExampleMod"],
-  "client": ["com.example.ExampleModClient"]
+{
+  "schemaVersion": 1,
+  "id": "dummymod",
+  "version": "${version}",
+  "name": "Dummy Mod",
+  "description": "Dummy player record and replay mod",
+  "authors": ["me"],
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.example.ExampleMod"],
+    "client": ["com.example.ExampleModClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
 }
