@@ -1,0 +1,4 @@
+"entrypoints": {
+  "main": ["com.example.ExampleMod"],
+  "client": ["com.example.ExampleModClient"]
+}
