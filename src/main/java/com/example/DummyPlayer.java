@@ -9,6 +9,8 @@ import com.google.gson.JsonParser;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.properties.Property;
 import com.mojang.authlib.properties.PropertyMap;
+import io.netty.channel.Channel;
+import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
@@ -24,6 +26,8 @@ import net.minecraft.text.Text;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -34,6 +38,7 @@ import java.util.function.Consumer;
 public class DummyPlayer extends ServerPlayerEntity {
 
     public boolean bot = false;
+    public FakeConnection fake;
 
     public DummyPlayer(MinecraftServer server, ServerWorld world, GameProfile profile) {
         super(server, world, profile, SyncedClientOptions.createDefault());
@@ -56,9 +61,11 @@ public class DummyPlayer extends ServerPlayerEntity {
             server.execute(() -> {
                 try {
                     DummyPlayer p = new DummyPlayer(server, world, profile);
+                    FakeConnection fc = new FakeConnection();
+                    p.fake = fc;
                     p.refreshPositionAndAngles(pos.x, pos.y, pos.z, yaw, 0);
                     server.getPlayerManager().onPlayerConnect(
-                        new FakeConnection(), p,
+                        fc, p,
                         new ConnectedClientData(profile, 0, p.getClientOptions(), false));
                     p.setHealth(p.getMaxHealth());
                     p.getHungerManager().setFoodLevel(20);
@@ -115,6 +122,7 @@ public class DummyPlayer extends ServerPlayerEntity {
             this.networkHandler.syncWithPlayerPosition();
             ((ServerWorld) this.getEntityWorld()).getChunkManager().updatePosition(this);
         }
+        if (fake != null && srv().getTicks() % 40 == 0) fake.clean();
         if (bot) botTick();
         super.tick();
         this.playerTick();
@@ -157,6 +165,24 @@ public class DummyPlayer extends ServerPlayerEntity {
     }
 
     public static class FakeConnection extends ClientConnection {
-        public FakeConnection() { super(NetworkSide.SERVERBOUND); }
+        private final EmbeddedChannel ch = new EmbeddedChannel();
+
+        public FakeConnection() {
+            super(NetworkSide.SERVERBOUND);
+            try {
+                for (Field f : ClientConnection.class.getDeclaredFields()) {
+                    if (!Modifier.isStatic(f.getModifiers()) && f.getType() == Channel.class) {
+                        f.setAccessible(true);
+                        f.set(this, ch);
+                    }
+                }
+            } catch (Throwable t) {
+                t.printStackTrace();
+            }
+        }
+
+        public void clean() {
+            try { ch.releaseOutbound(); } catch (Throwable ignored) { }
+        }
     }
 }
