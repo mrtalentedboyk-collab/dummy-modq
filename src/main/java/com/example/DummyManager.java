@@ -49,6 +49,7 @@ public class DummyManager {
     static final Map<UUID, Preview> previews = new HashMap<>();
 
     static String key(String n) { return n.toLowerCase(); }
+    static MinecraftServer server(ServerPlayerEntity p) { return ((ServerWorld) p.getEntityWorld()).getServer(); }
     static void msg(ServerPlayerEntity p, String s) { if (p != null) p.sendMessage(Text.literal(s), false); }
     public static void later(int ticks, Runnable r) { later.add(new Later(ticks, r)); }
 
@@ -125,7 +126,7 @@ public class DummyManager {
     public static boolean isRecording(String name) { return recording.containsKey(key(name)); }
 
     public static void startRecord(ServerPlayerEntity player, String name) {
-        MinecraftServer server = player.getServer();
+        MinecraftServer server = server(player);
         String k = key(name);
         if (recording.containsKey(k)) { msg(player, "Ageei record hocche"); return; }
         Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
@@ -256,7 +257,7 @@ public class DummyManager {
         p.changeGameMode(GameMode.SPECTATOR);
     }
     public static void fpp(ServerPlayerEntity p, String name) {
-        DummyPlayer d = getDummy(p.getServer(), name);
+        DummyPlayer d = getDummy(server(p), name);
         if (d == null) { msg(p, "Dummy nai (age preview start ba spawn koro)"); return; }
         if (isRecording(name)) { msg(p, "Record cholar somoy FPP hobe na"); return; }
         enterPreview(p, true);
@@ -264,7 +265,7 @@ public class DummyManager {
         msg(p, "FPP view: Shift chap bar korar jonno");
     }
     public static void ownPreview(ServerPlayerEntity p, String name) {
-        DummyPlayer d = getDummy(p.getServer(), name);
+        DummyPlayer d = getDummy(server(p), name);
         if (d == null) { msg(p, "Dummy nai (age preview start ba spawn koro)"); return; }
         if (isRecording(name)) { msg(p, "Record cholar somoy hobe na"); return; }
         enterPreview(p, false);
@@ -318,4 +319,4 @@ public class DummyManager {
             if (pv.fpp && p.getCameraEntity() == p) exitPreview(p);
         }
     }
-                                      }
+                }
