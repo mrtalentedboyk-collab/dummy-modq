@@ -28,6 +28,10 @@ public class DummyMenu {
         return s;
     }
 
+    static String onOff(String label, boolean b) {
+        return (b ? "§a" : "§7") + label + (b ? ": ON" : ": OFF");
+    }
+
     static class H extends GenericContainerScreenHandler {
         final IntConsumer onClick;
         final int size;
@@ -68,21 +72,31 @@ public class DummyMenu {
         DummyPlayer cur = DummyManager.getDummy(server, name);
         boolean rec = DummyManager.isRecording(name);
         boolean botOn = cur != null && cur.bot;
+        int lvl = cur != null ? cur.level : 2;
 
-        SimpleInventory inv = new SimpleInventory(27);
+        SimpleInventory inv = new SimpleInventory(54);
         inv.setStack(10, rec ? icon(Items.LIME_DYE, "§aRecord Stop & Save") : icon(Items.RED_DYE, "§cRecord Start"));
         inv.setStack(11, icon(Items.CLOCK, "§ePreview Start (replay)"));
         inv.setStack(12, icon(Items.BARRIER, "§6Preview Stop"));
-        inv.setStack(13, icon(Items.IRON_SWORD, botOn ? "§aBot mode: ON (click = OFF)" : "§7Bot mode: OFF (click = ON)"));
         inv.setStack(14, icon(Items.ENDER_EYE, "§bDummy FPP view"));
         inv.setStack(15, icon(Items.SPYGLASS, "§bOwn preview"));
         inv.setStack(16, icon(Items.TNT, "§4Remove dummy"));
-        inv.setStack(19, icon(Items.DIAMOND_CHESTPLATE, "Armor: Diamond"));
-        inv.setStack(20, icon(Items.NETHERITE_CHESTPLATE, "Armor: Netherite"));
-        inv.setStack(21, icon(Items.IRON_CHESTPLATE, "Armor: Iron"));
-        inv.setStack(22, icon(Items.GLASS, "Armor: None"));
 
-        open(p, "Dummy: " + name, ScreenHandlerType.GENERIC_9X3, 3, inv, slot -> {
+        inv.setStack(19, icon(Items.IRON_SWORD, onOff("Bot mode", botOn)));
+        inv.setStack(20, icon(Items.EXPERIENCE_BOTTLE, "§eBot level: " + DummyPlayer.LV[lvl - 1] + " (click = next)"));
+        inv.setStack(21, icon(Items.FEATHER, onOff("Strafe", cur != null && cur.optStrafe)));
+        inv.setStack(22, icon(Items.DIAMOND_SWORD, onOff("Crit / jump attack", cur != null && cur.optCrit)));
+        inv.setStack(23, icon(Items.COBBLESTONE, onOff("Bridge & Tower", cur != null && cur.optBridge)));
+        inv.setStack(24, icon(Items.GOLDEN_APPLE, onOff("Auto heal (gapple/totem)", cur != null && cur.optHeal)));
+        inv.setStack(25, icon(Items.END_CRYSTAL, onOff("Crystal PvP (block bhange)", cur != null && cur.optCrystal)));
+
+        inv.setStack(28, icon(Items.DIAMOND_CHESTPLATE, "Armor: Diamond"));
+        inv.setStack(29, icon(Items.NETHERITE_CHESTPLATE, "Armor: Netherite"));
+        inv.setStack(30, icon(Items.IRON_CHESTPLATE, "Armor: Iron"));
+        inv.setStack(31, icon(Items.GLASS, "Armor: None"));
+        inv.setStack(33, icon(Items.CHEST, "§6Kit copy (amar inventory -> dummy)"));
+
+        open(p, "Dummy: " + name, ScreenHandlerType.GENERIC_9X6, 6, inv, slot -> {
             DummyPlayer d = DummyManager.getDummy(server, name);
             switch (slot) {
                 case 10 -> {
@@ -92,14 +106,28 @@ public class DummyMenu {
                 }
                 case 11 -> { p.closeHandledScreen(); DummyManager.startReplay(server, name, 0, p); }
                 case 12 -> { p.closeHandledScreen(); DummyManager.stopReplay(name); }
-                case 13 -> { p.closeHandledScreen(); DummyManager.toggleBot(server, name, p); }
                 case 14 -> { p.closeHandledScreen(); DummyManager.fpp(p, name); }
                 case 15 -> { p.closeHandledScreen(); DummyManager.ownPreview(p, name); }
                 case 16 -> { p.closeHandledScreen(); DummyManager.remove(server, name); }
-                case 19 -> { if (d != null) DummyManager.armor(d, "diamond"); }
-                case 20 -> { if (d != null) DummyManager.armor(d, "netherite"); }
-                case 21 -> { if (d != null) DummyManager.armor(d, "iron"); }
-                case 22 -> { if (d != null) DummyManager.armor(d, "none"); }
+                case 19, 20, 21, 22, 23, 24, 25, 28, 29, 30, 31, 33 -> {
+                    if (d == null) { DummyManager.msg(p, "Dummy nai, age /dummy spawn " + name); return; }
+                    switch (slot) {
+                        case 19 -> DummyManager.toggleBot(server, name, p);
+                        case 20 -> d.level = d.level % 5 + 1;
+                        case 21 -> d.optStrafe = !d.optStrafe;
+                        case 22 -> d.optCrit = !d.optCrit;
+                        case 23 -> d.optBridge = !d.optBridge;
+                        case 24 -> d.optHeal = !d.optHeal;
+                        case 25 -> d.optCrystal = !d.optCrystal;
+                        case 28 -> DummyManager.armor(d, "diamond");
+                        case 29 -> DummyManager.armor(d, "netherite");
+                        case 30 -> DummyManager.armor(d, "iron");
+                        case 31 -> DummyManager.armor(d, "none");
+                        case 33 -> DummyManager.copyKit(p, name);
+                        default -> { }
+                    }
+                    openDummy(p, name); // label refresh
+                }
                 default -> { }
             }
         });
